@@ -68,8 +68,13 @@ CACHES = {
         "BACKEND": "django_redis.cache.RedisCache",
         "LOCATION": env("REDIS_URL"),
         "KEY_PREFIX": "location_map",
+        "OPTIONS": {
+            "IGNORE_EXCEPTIONS": True,
+        },
     }
 }
+
+DJANGO_REDIS_LOG_IGNORED_EXCEPTIONS = True
 
 AUTH_USER_MODEL = "users.User"
 
