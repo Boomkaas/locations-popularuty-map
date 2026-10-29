@@ -1,13 +1,17 @@
-import os
 from pathlib import Path
 
-BASE_DIR = Path(__file__).resolve().parent.parent
+import environ
 
-SECRET_KEY = os.environ["SECRET_KEY"]
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
-DEBUG = True
+env = environ.Env()
+environ.Env.read_env(BASE_DIR / ".env")
 
-ALLOWED_HOSTS = []
+SECRET_KEY = env("SECRET_KEY")
+
+DEBUG = env.bool("DEBUG", default=False)
+
+ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=[])
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -16,6 +20,14 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "rest_framework",
+    "django_filters",
+    "drf_spectacular",
+    "apps.users",
+    "apps.categories",
+    "apps.locations",
+    "apps.reviews",
+    "apps.subscriptions",
 ]
 
 MIDDLEWARE = [
@@ -48,11 +60,18 @@ TEMPLATES = [
 WSGI_APPLICATION = "config.wsgi.application"
 
 DATABASES = {
+    "default": env.db(),
+}
+
+CACHES = {
     "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": env("REDIS_URL"),
+        "KEY_PREFIX": "location_map",
     }
 }
+
+AUTH_USER_MODEL = "users.User"
 
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
@@ -60,6 +79,35 @@ AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
+
+REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework.authentication.SessionAuthentication",
+    ],
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.IsAuthenticatedOrReadOnly",
+    ],
+    "DEFAULT_FILTER_BACKENDS": [
+        "django_filters.rest_framework.DjangoFilterBackend",
+        "rest_framework.filters.SearchFilter",
+        "rest_framework.filters.OrderingFilter",
+    ],
+    "DEFAULT_PAGINATION_CLASS": "config.pagination.DefaultPagination",
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    "DEFAULT_THROTTLE_RATES": {"auth": "10/min"},
+}
+
+SPECTACULAR_SETTINGS = {
+    "TITLE": "Location Popularity Map API",
+    "VERSION": "1.0.0",
+}
+
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = "Lax"
+CSRF_COOKIE_HTTPONLY = False
+CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS", default=[])
+
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="noreply@locationmap.local")
 
 LANGUAGE_CODE = "en-us"
 
