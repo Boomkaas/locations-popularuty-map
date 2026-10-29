@@ -1,5 +1,7 @@
 from django.contrib import admin
+from django.db import transaction
 
+from .cache import invalidate_locations_list
 from .models import Location
 
 
@@ -16,3 +18,4 @@ class LocationAdmin(admin.ModelAdmin):
     @admin.action(description="Restore selected locations")
     def restore_locations(self, request, queryset):
         queryset.update(is_deleted=False, deleted_at=None)
+        transaction.on_commit(invalidate_locations_list)

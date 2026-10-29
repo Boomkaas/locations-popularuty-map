@@ -1,13 +1,15 @@
 from datetime import timedelta
 
 from django.conf import settings
-from django.db import models
+from django.db import models, transaction
 from django.db.models import Avg, Count, ExpressionWrapper, F, FloatField, OuterRef, Q, Subquery, Value
 from django.db.models.functions import Cast, Coalesce, Ln
 from django.utils import timezone
 
 from apps.categories.models import Category
 from apps.reviews.models import Review
+
+from .cache import invalidate_locations_list
 
 
 class SoftDeleteQuerySet(models.QuerySet):
@@ -42,6 +44,11 @@ class SoftDeleteModel(models.Model):
 
 
 class LocationQuerySet(SoftDeleteQuerySet):
+    def delete(self):
+        deleted_count = super().delete()
+        transaction.on_commit(invalidate_locations_list)
+        return deleted_count
+
     def with_stats(self):
         week_ago = timezone.now() - timedelta(days=7)
         reviews = Review.objects.filter(location=OuterRef("pk")).values("location")
@@ -94,6 +101,7 @@ class Location(SoftDeleteModel):
     updated_at = models.DateTimeField(auto_now=True)
 
     objects = LocationManager()
+    all_objects = LocationQuerySet.as_manager()
 
     class Meta:
         ordering = ["-created_at"]
