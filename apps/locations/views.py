@@ -1,3 +1,4 @@
+from django.core.cache import cache
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema
 from rest_framework.decorators import action
@@ -6,6 +7,7 @@ from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 
+from .cache import LIST_TTL, list_cache_key
 from .filters import LocationFilter, StableOrderingFilter
 from .models import Location
 from .permissions import IsAuthorOrAdminOrReadOnly
@@ -32,6 +34,14 @@ class LocationViewSet(ModelViewSet):
         if self.action == "map":
             return LocationMapSerializer
         return LocationSerializer
+
+    def list(self, request, *args, **kwargs):
+        cache_key = list_cache_key(request)
+        data = cache.get(cache_key)
+        if data is None:
+            data = super().list(request, *args, **kwargs).data
+            cache.set(cache_key, data, LIST_TTL)
+        return Response(data)
 
     def retrieve(self, request, *args, **kwargs):
         location = self.get_object()
