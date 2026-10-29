@@ -1,0 +1,10 @@
+{% autoescape off %}New review for {{ location.title }}
+
+Rating: {{ review.rating }}/5
+Author: {{ review.author.username }}
+
+{{ review.text }}
+
+Location: {{ location_url }}
+To unsubscribe, send a DELETE request to {{ unsubscribe_url }}
+{% endautoescape %}

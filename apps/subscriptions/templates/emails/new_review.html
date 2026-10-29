@@ -1,0 +1,6 @@
+<h2>New review for {{ location.title }}</h2>
+<p><strong>Rating:</strong> {{ review.rating }}/5</p>
+<p><strong>Author:</strong> {{ review.author.username }}</p>
+<p>{{ review.text }}</p>
+<p>Location: <a href="{{ location_url }}">{{ location_url }}</a></p>
+<p>To unsubscribe, send a DELETE request to {{ unsubscribe_url }}</p>
