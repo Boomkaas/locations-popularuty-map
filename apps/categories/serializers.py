@@ -5,9 +5,11 @@ from .models import Category
 
 
 class CategorySerializer(serializers.ModelSerializer):
+    locations_count = serializers.IntegerField(read_only=True)
+
     class Meta:
         model = Category
-        fields = ["id", "name", "slug", "description", "created_at"]
+        fields = ["id", "name", "slug", "description", "locations_count", "created_at"]
         read_only_fields = ["slug", "created_at"]
 
     def validate_name(self, value):

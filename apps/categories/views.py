@@ -1,4 +1,4 @@
-from django.db.models import ProtectedError
+from django.db.models import Count, ProtectedError, Q
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
@@ -9,7 +9,9 @@ from .serializers import CategorySerializer
 
 
 class CategoryViewSet(ModelViewSet):
-    queryset = Category.objects.all()
+    queryset = Category.objects.annotate(
+        locations_count=Count("locations", filter=Q(locations__is_deleted=False))
+    )
     serializer_class = CategorySerializer
     permission_classes = [IsAdminOrReadOnly]
 
