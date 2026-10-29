@@ -1,9 +1,12 @@
+from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema
 from rest_framework.decorators import action
+from rest_framework.filters import SearchFilter
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 
+from .filters import LocationFilter, StableOrderingFilter
 from .models import Location
 from .permissions import IsAuthorOrAdminOrReadOnly
 from .serializers import LocationListSerializer, LocationMapSerializer, LocationSerializer
@@ -14,6 +17,11 @@ POPULAR_LIMIT = 10
 
 class LocationViewSet(ModelViewSet):
     permission_classes = [IsAuthenticatedOrReadOnly, IsAuthorOrAdminOrReadOnly]
+    filter_backends = [DjangoFilterBackend, SearchFilter, StableOrderingFilter]
+    filterset_class = LocationFilter
+    search_fields = ["title", "description"]
+    ordering_fields = ["created_at", "rating", "popularity", "reviews_count"]
+    ordering = ["-created_at"]
 
     def get_queryset(self):
         return Location.objects.select_related("category", "author").with_stats()
