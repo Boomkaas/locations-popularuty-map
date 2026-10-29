@@ -3,8 +3,6 @@ from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.db.models import Count, OuterRef, Q, Subquery
 
-from apps.locations.models import Location
-
 
 class ReviewQuerySet(models.QuerySet):
     def with_reactions(self, user):
@@ -17,7 +15,7 @@ class ReviewQuerySet(models.QuerySet):
 
 
 class Review(models.Model):
-    location = models.ForeignKey(Location, on_delete=models.CASCADE, related_name="reviews")
+    location = models.ForeignKey("locations.Location", on_delete=models.CASCADE, related_name="reviews")
     author = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
