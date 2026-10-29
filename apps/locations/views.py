@@ -1,13 +1,18 @@
 from django.core.cache import cache
+from django.http import HttpResponse
+from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
 from rest_framework.filters import SearchFilter
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 
 from .cache import LIST_TTL, list_cache_key
+from .export import EXPORT_CONTENT_TYPES, export_locations
 from .filters import LocationFilter, StableOrderingFilter
 from .models import Location
 from .permissions import IsAuthorOrAdminOrReadOnly
@@ -58,6 +63,25 @@ class LocationViewSet(ModelViewSet):
         locations = self.filter_queryset(self.get_queryset())
         serializer = self.get_serializer(locations, many=True)
         return Response(serializer.data)
+
+    @extend_schema(
+        parameters=[OpenApiParameter("export_format", enum=["csv", "json"], default="csv")],
+        responses={200: OpenApiTypes.BINARY},
+        filters=True,
+    )
+    @action(detail=False, methods=["get"])
+    def export(self, request):
+        export_format = request.query_params.get("export_format", "csv")
+        if export_format not in EXPORT_CONTENT_TYPES:
+            raise ValidationError({"export_format": "Allowed values: csv, json."})
+
+        locations = self.filter_queryset(self.get_queryset())
+        body = export_locations(locations, export_format)
+
+        file_date = timezone.now().strftime("%Y%m%d_%H%M")
+        response = HttpResponse(body, content_type=EXPORT_CONTENT_TYPES[export_format])
+        response["Content-Disposition"] = f'attachment; filename="locations_{file_date}.{export_format}"'
+        return response
 
     @extend_schema(responses=LocationListSerializer(many=True))
     @action(detail=False, methods=["get"])
