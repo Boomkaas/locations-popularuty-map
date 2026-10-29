@@ -107,6 +107,12 @@ SESSION_COOKIE_SAMESITE = "Lax"
 CSRF_COOKIE_HTTPONLY = False
 CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS", default=[])
 
+POPULARITY_WEIGHTS = {
+    "rating": 2.0,
+    "reviews": 1.5,
+    "views": 1.0,
+}
+
 DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="noreply@locationmap.local")
 
 LANGUAGE_CODE = "en-us"

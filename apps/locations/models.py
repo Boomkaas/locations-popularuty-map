@@ -1,9 +1,13 @@
+from datetime import timedelta
+
 from django.conf import settings
 from django.db import models
-from django.db.models import Q
+from django.db.models import Avg, Count, ExpressionWrapper, F, FloatField, OuterRef, Q, Subquery, Value
+from django.db.models.functions import Cast, Coalesce, Ln
 from django.utils import timezone
 
 from apps.categories.models import Category
+from apps.reviews.models import Review
 
 
 class SoftDeleteQuerySet(models.QuerySet):
@@ -37,6 +41,43 @@ class SoftDeleteModel(models.Model):
         self.save(update_fields=["is_deleted", "deleted_at"])
 
 
+class LocationQuerySet(SoftDeleteQuerySet):
+    def with_stats(self):
+        week_ago = timezone.now() - timedelta(days=7)
+        reviews = Review.objects.filter(location=OuterRef("pk")).values("location")
+        views = LocationView.objects.filter(location=OuterRef("pk"), viewed_at__gte=week_ago).values("location")
+
+        locations = self.annotate(
+            rating=Coalesce(
+                Subquery(reviews.annotate(value=Avg("rating")).values("value"), output_field=FloatField()),
+                Value(0.0),
+            ),
+            reviews_count=Coalesce(
+                Subquery(reviews.annotate(value=Count("id")).values("value")),
+                Value(0),
+            ),
+            views_last_7d=Coalesce(
+                Subquery(views.annotate(value=Count("id")).values("value")),
+                Value(0),
+            ),
+        )
+
+        weights = settings.POPULARITY_WEIGHTS
+        return locations.annotate(
+            popularity=ExpressionWrapper(
+                Value(weights["rating"]) * F("rating")
+                + Value(weights["reviews"]) * Ln(Cast("reviews_count", FloatField()) + Value(1.0))
+                + Value(weights["views"]) * Ln(Cast("views_last_7d", FloatField()) + Value(1.0)),
+                output_field=FloatField(),
+            )
+        )
+
+
+class LocationManager(models.Manager.from_queryset(LocationQuerySet)):
+    def get_queryset(self):
+        return super().get_queryset().filter(is_deleted=False)
+
+
 class Location(SoftDeleteModel):
     title = models.CharField(max_length=200)
     description = models.TextField()
@@ -51,6 +92,8 @@ class Location(SoftDeleteModel):
     )
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    objects = LocationManager()
 
     class Meta:
         ordering = ["-created_at"]
@@ -67,3 +110,21 @@ class Location(SoftDeleteModel):
 
     def __str__(self):
         return self.title
+
+
+class LocationView(models.Model):
+    location = models.ForeignKey(Location, on_delete=models.CASCADE, related_name="views")
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="location_views",
+    )
+    viewer_key = models.CharField(max_length=100)
+    viewed_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["location", "viewed_at"]),
+        ]
