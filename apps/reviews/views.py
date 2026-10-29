@@ -16,6 +16,7 @@ from .services import add_reaction, create_review, remove_reaction
 
 
 class LocationReviewListView(ListCreateAPIView):
+    queryset = Review.objects.none()
     serializer_class = ReviewSerializer
     ordering_fields = ["created_at", "rating", "likes_count"]
     ordering = ["-created_at"]
