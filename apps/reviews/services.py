@@ -1,5 +1,7 @@
 from django.db import IntegrityError, transaction
 
+from apps.subscriptions.tasks import notify_new_review
+
 from .exceptions import ConflictError
 from .models import Review, ReviewReaction
 
@@ -19,9 +21,12 @@ def create_review(location, author, rating, text):
 
     try:
         with transaction.atomic():
-            return Review.objects.create(location=location, author=author, rating=rating, text=text)
+            review = Review.objects.create(location=location, author=author, rating=rating, text=text)
     except IntegrityError:
         raise ConflictError(REVIEW_EXISTS_ERROR)
+
+    transaction.on_commit(lambda: notify_new_review.delay(review.id))
+    return review
 
 
 def add_reaction(review, user, value):

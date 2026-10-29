@@ -17,6 +17,7 @@ class LocationSerializer(serializers.ModelSerializer):
     reviews_count = serializers.IntegerField(read_only=True)
     views_last_7d = serializers.IntegerField(read_only=True)
     popularity = RoundedFloatField(read_only=True)
+    is_subscribed = serializers.SerializerMethodField()
 
     class Meta:
         model = Location
@@ -34,10 +35,17 @@ class LocationSerializer(serializers.ModelSerializer):
             "reviews_count",
             "views_last_7d",
             "popularity",
+            "is_subscribed",
             "created_at",
             "updated_at",
         ]
         read_only_fields = ["created_at", "updated_at"]
+
+    def get_is_subscribed(self, location) -> bool:
+        request = self.context.get("request")
+        if request is None or not request.user.is_authenticated:
+            return False
+        return location.subscriptions.filter(user=request.user).exists()
 
 
 class LocationListSerializer(serializers.ModelSerializer):
