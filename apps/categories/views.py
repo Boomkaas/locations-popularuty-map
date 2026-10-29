@@ -11,7 +11,7 @@ from .serializers import CategorySerializer
 class CategoryViewSet(ModelViewSet):
     queryset = Category.objects.annotate(
         locations_count=Count("locations", filter=Q(locations__is_deleted=False))
-    )
+    ).order_by("name")
     serializer_class = CategorySerializer
     permission_classes = [IsAdminOrReadOnly]
 
