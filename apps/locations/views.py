@@ -7,6 +7,7 @@ from rest_framework.viewsets import ModelViewSet
 from .models import Location
 from .permissions import IsAuthorOrAdminOrReadOnly
 from .serializers import LocationListSerializer, LocationMapSerializer, LocationSerializer
+from .services import register_view
 
 POPULAR_LIMIT = 10
 
@@ -23,6 +24,12 @@ class LocationViewSet(ModelViewSet):
         if self.action == "map":
             return LocationMapSerializer
         return LocationSerializer
+
+    def retrieve(self, request, *args, **kwargs):
+        location = self.get_object()
+        register_view(location, request)
+        serializer = self.get_serializer(location)
+        return Response(serializer.data)
 
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)
